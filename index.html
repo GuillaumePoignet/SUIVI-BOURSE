@@ -139,6 +139,7 @@ footer{margin-top:34px;border-top:1px solid var(--trait);padding-top:16px}
     <div>
       <h1>Suivi du portefeuille</h1>
       <p class="sous" id="sousTitre"></p>
+      <p class="sous mono" id="heures"></p>
     </div>
     <div class="outils">
       <div class="periodes" id="periodes" role="group" aria-label="Periode affichee"></div>
@@ -294,12 +295,14 @@ function dISO(iso){const [y,m,d]=iso.split('-').map(Number);return new Date(Date
 function fmtPrix(v,dev){return nf2.format(v)+(dev==='USD'?' $':' \u20ac');}
 function fmtPct(v){return (v>=0?'+':'-')+nf1.format(Math.abs(v))+' %';}
 function classePct(v){return v>=0?'up':'down';}
+const fHM=d=>String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0');
 
 const etat={
   periode:localStorage.getItem('sb_periode')||'1A',
   selection:null, survolSym:null,
   data:null, pf:[], parSym:{}, exclusions:[],
-  calc:null, refsLignes:{}
+  calc:null, refsLignes:{},
+  heureLecture:null, heureGravure:null, echecLecture:false, mnt:null
 };
 const $=id=>document.getElementById(id);
 
@@ -321,6 +324,13 @@ async function ghListe(chemin){
   if(!r.ok) throw new Error('HTTP '+r.status);
   return r.json();
 }
+async function ghApi(suite){
+  const r=await fetch('https://api.github.com/repos/'+DEPOT_PRIVE+'/'+suite,
+    {headers:{Authorization:'Bearer '+cleActuelle(),Accept:'application/vnd.github+json'}});
+  if(r.status===401||r.status===403) throw new Error('AUTH');
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
 
 async function chargerTout(){
   let pfMd, textesSeries, texteExcl='';
@@ -335,6 +345,10 @@ async function chargerTout(){
     if(!noms.length) throw new Error('ABSENT:BOURSE/series/COURS-*.csv');
     textesSeries=await Promise.all(noms.map(n=>ghTexte('BOURSE/series/'+n)));
     if(fichiers.some(f=>f.name==='EXCLUSIONS.csv')) texteExcl=await ghTexte('BOURSE/series/EXCLUSIONS.csv');
+    try{
+      const c=await ghApi('commits?path=BOURSE/series&per_page=1&sha=main');
+      etat.heureGravure=(c&&c[0])?new Date(c[0].commit.committer.date):null;
+    }catch(err){ etat.heureGravure=null; }
   }
   const data=mergeSeries(textesSeries.map(parseCsv));
   const exclusions=parseExclusions(texteExcl);
@@ -344,6 +358,8 @@ async function chargerTout(){
   etat.pf=parsePortefeuille(pfMd);
   etat.parSym={};
   for(const l of etat.pf) etat.parSym[l.symbole]=l;
+  etat.heureLecture=new Date();
+  etat.echecLecture=false;
 }
 
 function infoSym(s){return etat.parSym[s]||{type:'',nom:s,isin:'',symbole:s,place:'',devise:''};}
@@ -374,6 +390,7 @@ function toutRendre(){
   const rows=etat.data.rows;
   $('sousTitre').textContent=etat.pf.length+' lignes \u00b7 lecture directe du depot prive \u00b7 source Yahoo Finance';
   $('piedInfos').textContent='Derniere date au depot : '+dfPlein.format(dISO(rows[rows.length-1].date))+' \u00b7 '+rows.length+' jours de cotation \u00b7 les cours ne valent pas conseil';
+  majHeures();
 }
 
 function rendrePeriodes(){
@@ -511,6 +528,30 @@ function statsAbsolues(s){
   return {abs,f,l,hi,iHi,lo,iLo,varPct:100*(l.v/f.v-1)};
 }
 
+function centile(valeurs,p){
+  if(!valeurs.length) return null;
+  const a=valeurs.slice().sort((x,y)=>x-y);
+  const k=(a.length-1)*p, lo=Math.floor(k), hi=Math.ceil(k);
+  return lo===hi?a[lo]:a[lo]+(a[hi]-a[lo])*(k-lo);
+}
+/* Fourchette du vecu : toutes les variations passees sur h jours de
+   bourse, sur l'ensemble de l'historique disponible. Description du
+   passe, en aucun cas une prevision. */
+function fourchette(k,h){
+  const rows=etat.data.rows, sorties=[];
+  for(let i=0;i+h<rows.length;i++){
+    const a=rows[i].values[k], b=rows[i+h].values[k];
+    if(a==null||b==null) continue;
+    sorties.push(100*(b/a-1));
+  }
+  if(sorties.length<30) return null;
+  return {p10:centile(sorties,0.10),p50:centile(sorties,0.50),p90:centile(sorties,0.90)};
+}
+function blocFourchette(titre,f){
+  if(!f) return '';
+  return '<div class="stat"><div class="et">'+titre+'</div><div class="va">'+fmtPct(f.p10)+' a '+fmtPct(f.p90)+'</div><div class="qd">8 fois sur 10 par le passe \u00b7 mediane '+fmtPct(f.p50)+'</div></div>';
+}
+
 function rendreCartes(){
   const g=$('grilleCartes'); g.innerHTML='';
   const {w}=etat.calc;
@@ -554,6 +595,7 @@ function rendreDetail(){
   const sec=$('detail');
   if(!etat.selection){sec.hidden=true;return;}
   const s=etat.selection, ligne=infoSym(s), st=statsAbsolues(s);
+  const kSym=etat.data.symbols.indexOf(s);
   if(!st){sec.hidden=true;return;}
   sec.hidden=false;
   const {w}=etat.calc;
@@ -563,7 +605,9 @@ function rendreDetail(){
     '<div class="stat"><div class="et">Dernier</div><div class="va">'+fmtPrix(st.l.v,ligne.devise)+'</div><div class="qd">'+dfPlein.format(dISO(w[st.l.i].date))+'</div></div>'+
     '<div class="stat"><div class="et">Variation periode</div><div class="va '+classePct(st.varPct)+'">'+fmtPct(st.varPct)+'</div><div class="qd">depuis le '+dfCourt.format(dISO(w[st.f.i].date))+'</div></div>'+
     '<div class="stat"><div class="et">Plus haut</div><div class="va">'+fmtPrix(st.hi,ligne.devise)+'</div><div class="qd">'+dfCourt.format(dISO(w[st.iHi].date))+'</div></div>'+
-    '<div class="stat"><div class="et">Plus bas</div><div class="va">'+fmtPrix(st.lo,ligne.devise)+'</div><div class="qd">'+dfCourt.format(dISO(w[st.iLo].date))+'</div></div>';
+    '<div class="stat"><div class="et">Plus bas</div><div class="va">'+fmtPrix(st.lo,ligne.devise)+'</div><div class="qd">'+dfCourt.format(dISO(w[st.iLo].date))+'</div></div>'+
+    blocFourchette('3 jours de bourse - vecu',fourchette(kSym,3))+
+    blocFourchette('2 semaines - vecu',fourchette(kSym,10));
   /* trace absolu */
   const svg=$('svgDetail'); svg.innerHTML='';
   const W=960,H=210,gL=64,gR=14,gT=12,gB=26;
@@ -597,12 +641,32 @@ function rendreReserves(){
   const notes=[
     'Une case vide dans les series signifie que la source n\'a rien publie ce jour-la : jour ferie de la place, fonds non valorise, ou absence de cotation.',
     'Les fonds a valeur liquidative publient avec environ deux jours de retard : leurs courbes s\'arretent avant les autres.',
-    'Les lignes en dollars sont comparees en base 100, sans conversion en euros.'
+    'Les lignes en dollars sont comparees en base 100, sans conversion en euros.',
+    'Les fourchettes \u00ab 3 jours \u00bb et \u00ab 2 semaines \u00bb du detail decrivent le passe : 8 variations sur 10 y sont restees. Ce ne sont pas des previsions.'
   ];
   for(const ex of etat.exclusions){
     notes.push('Valeur ecartee du trace : '+ex.symbole+' au '+dfPlein.format(dISO(ex.date))+' - '+ex.motif);
   }
   for(const nte of notes){const li=document.createElement('li');li.textContent=nte;ul.appendChild(li);}
+}
+
+function majHeures(){
+  let t='Cours graves au depot : '+(etat.heureGravure?dfPlein.format(etat.heureGravure)+' a '+fHM(etat.heureGravure):'-');
+  t+=' \u00b7 page relue a '+(etat.heureLecture?fHM(etat.heureLecture):'-');
+  t+=' \u00b7 relecture automatique toutes les 30 min';
+  if(etat.echecLecture) t+=' \u00b7 la derniere relecture a echoue, nouvel essai dans 30 min';
+  $('heures').textContent=t;
+}
+
+async function rafraichir(){
+  try{
+    await chargerTout();
+    if(etat.selection&&etat.data.symbols.indexOf(etat.selection)<0) etat.selection=null;
+    toutRendre();
+  }catch(e){
+    etat.echecLecture=true;
+    majHeures();
+  }
 }
 
 /* ===== demarrage ===== */
@@ -613,6 +677,7 @@ async function demarrer(){
     etat.selection=null;
     toutRendre();
     $('app').hidden=false;
+    if(!etat.mnt) etat.mnt=setInterval(rafraichir,1800000);
   }catch(e){
     $('auth').hidden=false;
     const err=$('erreurAuth'); err.hidden=false;
