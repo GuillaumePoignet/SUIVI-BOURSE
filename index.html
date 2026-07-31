@@ -101,26 +101,80 @@ button:focus-visible,input:focus-visible,summary:focus-visible,li:focus-visible{
 .chip.up{background:rgba(46,107,79,.1)} .chip.down{background:rgba(176,67,44,.1)}
 .carte svg{width:100%;height:30px;margin-top:8px;display:block}
 
-/* radar */
-.radarbloc{margin-top:16px;padding:20px}
-.radar-sous{color:var(--encre60);font-size:13px;margin:5px 0 0}
-.radar-h3{font-family:"Fraunces",serif;font-weight:600;font-size:16px;margin:18px 0 2px}
+/* radar - tiroir lateral */
+.radar-fond{position:fixed;inset:0;background:rgba(29,38,32,.34);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
+.radar-fond.ouvert{opacity:1;pointer-events:auto}
+.tiroir{position:fixed;top:0;right:0;height:100%;width:min(900px,100%);background:var(--panneau);border-left:1px solid var(--trait);box-shadow:-14px 0 40px rgba(29,38,32,.10);transform:translateX(101%);transition:transform .24s ease;z-index:41;display:flex;flex-direction:column}
+.tiroir.ouvert{transform:none}
+.tiroir-tete{padding:18px 22px 14px;border-bottom:1px solid var(--trait);flex:none}
+.tiroir-tete .rang1{display:flex;justify-content:space-between;align-items:baseline;gap:14px}
+.tiroir-tete h2{font-size:22px}
+.tiroir-corps{overflow-y:auto;padding:16px 22px 34px;flex:1}
+.btnRadar{border:1px solid var(--trait);background:var(--panneau);border-radius:8px;padding:7px 13px;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:7px}
+.btnRadar .pastille{font-family:"IBM Plex Mono",monospace;font-size:11px;background:var(--encre);color:var(--paper);border-radius:20px;padding:1px 7px}
+.radar-sous{color:var(--encre60);font-size:12.5px;margin:8px 0 0;line-height:1.5}
+.radar-h3{font-family:"Fraunces",serif;font-weight:600;font-size:17px;margin:26px 0 2px}
 .radar-note{color:var(--encre60);font-size:12.5px;margin:8px 0 0}
-#radarTable{overflow-x:auto;margin-top:12px}
+.radar-reserve{color:var(--encre60);font-size:12.5px;margin:24px 0 0;padding-top:14px;border-top:1px solid var(--trait)}
+
+/* commandes */
+.radar-vues{display:flex;border:1px solid var(--trait);border-radius:8px;overflow:hidden;background:var(--paper);margin:14px 0 10px;flex-wrap:wrap}
+.radar-vues button{padding:7px 13px;font-size:12.5px;font-weight:500;color:var(--encre60);flex:1;white-space:nowrap}
+.radar-vues button+button{border-left:1px solid var(--trait)}
+.radar-vues button.actif{background:var(--encre);color:var(--paper)}
+.radar-vue-quoi{color:var(--encre60);font-size:12.5px;margin:0 0 12px}
+.radar-filtres{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.radar-filtres select,.radar-filtres input{font:inherit;font-size:12.5px;padding:6px 9px;border:1px solid var(--trait);border-radius:7px;background:#fff;color:inherit}
+.radar-filtres input{flex:1;min-width:150px}
+.radar-compte{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--encre35);margin:8px 0 0}
+
+/* tableau */
+#radarTable{overflow-x:auto;margin-top:10px}
 #radarTable table{border-collapse:collapse;width:100%;font-size:12.5px}
-#radarTable th{text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--encre60);padding:6px 10px 6px 0;border-bottom:1px solid var(--trait);white-space:nowrap}
+#radarTable th{text-align:left;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--encre60);padding:7px 10px 7px 0;border-bottom:1px solid var(--trait);white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panneau)}
+#radarTable th:hover{color:var(--encre)}
+#radarTable th.trie{color:var(--laiton)}
+#radarTable th .fleche{font-size:9px;margin-left:3px}
 #radarTable td{padding:7px 10px 7px 0;border-bottom:1px solid var(--trait);vertical-align:top}
 #radarTable td.mono,#radarTable td.val{font-family:"IBM Plex Mono",monospace;white-space:nowrap}
-.radar-nom{font-weight:500;display:inline-block;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+#radarTable tr.ligne{cursor:pointer}
+#radarTable tr.ligne:hover td{background:rgba(29,38,32,.045)}
+#radarTable tr.ligne.ouverte td{background:rgba(142,114,38,.10)}
+#radarTable tr.detail td{background:rgba(29,38,32,.03)}
+.radar-nom{font-weight:500;display:inline-block;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 .radar-badge{font-size:10px;font-family:"IBM Plex Mono",monospace;color:var(--encre60);border:1px solid var(--trait);border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+.radar-theme{font-size:10.5px;color:var(--encre60)}
+.radar-haut{font-size:10px;font-family:"IBM Plex Mono",monospace;color:var(--laiton);border:1px solid var(--laiton);border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+.radar-plus{margin:12px 0 0}
+
+/* detail d'une valeur */
+.vdet{padding:6px 0 12px}
+.vdet h4{font-family:"Fraunces",serif;font-weight:600;font-size:15px;margin:0 0 2px}
+.vdet .qd{font-size:11.5px;color:var(--encre35);font-family:"IBM Plex Mono",monospace}
+.vdet svg{width:100%;height:auto;display:block;margin:8px 0 4px;max-width:660px}
+.radar-actus{margin-top:8px}
 .radar-actus summary{cursor:pointer;color:var(--laiton);font-weight:500;font-size:12px}
 .radar-actus ul{margin:6px 0 0;padding-left:16px}
 .radar-actus li{margin:5px 0;white-space:normal}
 .radar-actus a{color:var(--encre);text-decoration:underline;text-underline-offset:2px}
 .radar-actus .src{color:var(--encre35);font-family:"IBM Plex Mono",monospace;font-size:10.5px}
 a.radar-cherche{color:var(--encre60);font-size:12px;text-decoration:underline;text-underline-offset:2px}
-.radar-themes{margin:8px 0 0;padding-left:20px;font-size:13px}
-.radar-themes li{margin:4px 0}
+
+/* marche par theme + notes */
+.radar-grille{overflow-x:auto;margin-top:10px}
+.radar-grille table{border-collapse:collapse;width:100%;font-size:12.5px}
+.radar-grille th{text-align:left;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--encre60);padding:7px 10px 7px 0;border-bottom:1px solid var(--trait);white-space:nowrap}
+.radar-grille td{padding:6px 10px 6px 0;border-bottom:1px solid var(--trait)}
+.radar-grille td.val,.radar-grille td.mono{font-family:"IBM Plex Mono",monospace;white-space:nowrap}
+.radar-grille tr.cliq{cursor:pointer}
+.radar-grille tr.cliq:hover td{background:rgba(29,38,32,.045)}
+.etoiles{font-family:"IBM Plex Mono",monospace;color:var(--laiton);letter-spacing:.08em}
+
+@media (max-width: 620px){
+  .tiroir-tete{padding:14px 14px 12px}
+  .tiroir-corps{padding:14px 14px 30px}
+  .radar-nom{max-width:150px}
+}
 
 /* pied */
 footer{margin-top:34px;border-top:1px solid var(--trait);padding-top:16px}
@@ -164,6 +218,7 @@ footer{margin-top:34px;border-top:1px solid var(--trait);padding-top:16px}
     </div>
     <div class="outils">
       <div class="periodes" id="periodes" role="group" aria-label="Periode affichee"></div>
+      <button class="btnRadar" id="btnRadar" hidden aria-expanded="false">Radar<span class="pastille" id="radarPastille"></span></button>
       <button class="btnSobre" id="btnRecharger">Recharger</button>
       <button class="lien" id="btnCle">Changer de cle</button>
     </div>
@@ -183,15 +238,37 @@ footer{margin-top:34px;border-top:1px solid var(--trait);padding-top:16px}
     </aside>
   </section>
 
-  <section id="radar" class="panneau radarbloc" hidden>
-    <h2>Radar</h2>
-    <p class="radar-sous" id="radarSous"></p>
-    <div id="radarTable"></div>
-    <h3 class="radar-h3">Themes en mouvement</h3>
-    <p class="radar-note">Les ETF thematiques de l'univers, classes par performance 3 mois.</p>
-    <ol id="radarThemes" class="radar-themes"></ol>
-    <p class="radar-note">Le Radar liste ce qui passe des filtres ecrits, sur des donnees passees. Rien n'y predit l'avenir, rien n'y est un conseil.</p>
-  </section>
+  <div class="radar-fond" id="radarFond" hidden></div>
+  <aside class="tiroir" id="radar" role="dialog" aria-modal="true" aria-labelledby="radarTitre" hidden>
+    <div class="tiroir-tete">
+      <div class="rang1">
+        <h2 id="radarTitre">Radar</h2>
+        <button class="btnSobre" id="btnFermerRadar">Fermer</button>
+      </div>
+      <p class="radar-sous" id="radarSous"></p>
+    </div>
+    <div class="tiroir-corps">
+      <div class="radar-vues" id="radarVues" role="group" aria-label="Angle de vue"></div>
+      <p class="radar-vue-quoi" id="radarVueQuoi"></p>
+      <div class="radar-filtres">
+        <select id="radarOrigine" aria-label="Origine"></select>
+        <select id="radarTheme" aria-label="Theme"></select>
+        <input id="radarQ" type="search" placeholder="Chercher un nom ou un symbole" aria-label="Chercher">
+      </div>
+      <p class="radar-compte" id="radarCompte"></p>
+      <div id="radarTable"></div>
+      <div class="radar-plus" id="radarPlus"></div>
+
+      <h3 class="radar-h3">Marche par theme</h3>
+      <p class="radar-note">Mediane des valeurs de chaque theme, classee par trois mois. Clique un theme pour filtrer le tableau du dessus. Actions americaines et ETF seulement : les actions europeennes n'ont pas de secteur au depot.</p>
+      <div class="radar-grille" id="radarThemes"></div>
+
+      <h3 class="radar-h3">Notes des fonds</h3>
+      <div class="radar-grille" id="radarFonds"></div>
+
+      <p class="radar-reserve">Le Radar decrit des cours passes, releves chez Yahoo Finance. Rien n'y predit l'avenir, rien n'y est un conseil.</p>
+    </div>
+  </aside>
 
   <section id="detail" class="panneau" hidden>
     <div class="detail-tete">
@@ -686,38 +763,254 @@ function rendreReserves(){
   for(const nte of notes){const li=document.createElement('li');li.textContent=nte;ul.appendChild(li);}
 }
 
-function rendreRadar(){
-  const sec=$('radar'), r=etat.radar;
-  if(!r||!r.selection){sec.hidden=true;return;}
-  sec.hidden=false;
-  const s=r.seuils||{};
-  $('radarSous').textContent='Balayage du '+dfPlein.format(new Date(r.genere_le))+' \u00b7 '+r.univers+' valeurs examinees, '+r.recus+' series recues \u00b7 filtres : recul de '+Math.abs(s.ecart_haut_max)+' a '+Math.abs(s.ecart_haut_min)+' % depuis le plus haut d\u2019un an, au-dessus de la moyenne 200 jours, 12 derniers mois positifs \u00b7 '+r.passants_total+' valeurs passent'+(r.passants_total>r.selection.length?', les '+r.selection.length+' premieres par performance 6 mois ci-dessous':'');
-  if(!r.selection.length){$('radarTable').innerHTML='<p class="radar-note">Aucune valeur ne passe les filtres aujourd\u2019hui.</p>';}
-  else{
-    let h='<table><thead><tr><th>Valeur</th><th>Dernier</th><th>Vs haut 1 an</th><th>Vs moy. 200 j</th><th>1M</th><th>6M</th><th>1A</th><th>Secousse/j</th><th>Actus</th></tr></thead><tbody>';
-    for(const x of r.selection){
-      const pc=v=>v==null?'<td class="val na">\u00b7</td>':'<td class="val '+classePct(v)+'">'+fmtPct(v)+'</td>';
-      let act;
-      if(x.actus&&x.actus.length){
-        act='<details class="radar-actus"><summary>'+x.actus.length+' titre'+(x.actus.length>1?'s':'')+'</summary><ul>';
-        for(const a of x.actus) act+='<li><a href="'+ech(a.u)+'" target="_blank" rel="noopener">'+ech(a.t)+'</a> <span class="src">'+ech(a.s||'')+'</span></li>';
-        act+='</ul></details>';
-      }else{
-        act='<a class="radar-cherche" href="https://news.google.com/search?q='+encodeURIComponent(x.nom)+'&hl=fr" target="_blank" rel="noopener">chercher</a>';
-      }
-      h+='<tr><td><span class="radar-nom" title="'+ech(x.nom)+'">'+ech(x.nom)+'</span><span class="radar-badge">'+ech(x.origine)+'</span><div class="qd mono">'+ech(x.symbole)+'</div></td>'+
-         '<td class="mono">'+nf2.format(x.dernier)+' '+ech(x.devise)+'</td>'+pc(x.ecart_haut52)+pc(x.vs_mm200)+pc(x.perf_1m)+pc(x.perf_6m)+pc(x.perf_1a)+
-         '<td class="mono">'+nf1.format(x.secousse)+' %</td><td>'+act+'</td></tr>';
+/* ===== Radar : tiroir lateral, trois angles de vue ===== */
+const VUES=[
+  ['montee','Montee','Les valeurs au-dessus de leur moyenne 200 jours, classees par performance 6 mois. Celles qui touchent leur plus haut d\u2019un an sont marquees.'],
+  ['repli','Repli dans la montee','Les valeurs qui reculent de 8 a 30 % depuis leur plus haut d\u2019un an, restent au-dessus de la moyenne 200 jours et gagnent sur douze mois.'],
+  ['tout','Tout','Les 1036 valeurs de l\u2019univers, sans filtre.']
+];
+const COLS=[
+  {k:'n',  t:'Valeur',        f:'txt'},
+  {k:'c',  t:'Dernier',       f:'prix'},
+  {k:'h',  t:'Vs haut 1 an',  f:'pct'},
+  {k:'m',  t:'Vs moy. 200 j', f:'pct'},
+  {k:'p1', t:'1M',            f:'pct'},
+  {k:'p3', t:'3M',            f:'pct'},
+  {k:'p6', t:'6M',            f:'pct'},
+  {k:'p12',t:'1A',            f:'pct'},
+  {k:'sec',t:'Secousse/j',    f:'num'}
+];
+const PAS_AFFICHE=100;
+const rdr={vue:'montee',origine:'',theme:'',q:'',tri:'p6',sens:-1,ouverte:null,limite:PAS_AFFICHE};
+
+function radarDispo(){return !!(etat.radar&&etat.radar.valeurs&&etat.radar.valeurs.length);}
+
+function radarLignes(){
+  const r=etat.radar, s=r.seuils||{};
+  let v=r.valeurs.slice();
+  if(rdr.vue==='montee') v=v.filter(x=>x.m!=null&&x.m>0);
+  else if(rdr.vue==='repli') v=v.filter(x=>
+    x.j>=s.jours_min && x.h>=s.ecart_haut_min && x.h<=s.ecart_haut_max &&
+    x.m>s.vs_mm200_min && x.p12!=null && x.p12>s.perf_1a_min);
+  if(rdr.origine) v=v.filter(x=>x.o===rdr.origine);
+  if(rdr.theme) v=v.filter(x=>x.t===rdr.theme);
+  const q=rdr.q.trim().toLowerCase();
+  if(q) v=v.filter(x=>x.s.toLowerCase().indexOf(q)>=0||x.n.toLowerCase().indexOf(q)>=0);
+  const k=rdr.tri, sn=rdr.sens;
+  v.sort((a,b)=>{
+    if(k==='n') return sn*a.n.localeCompare(b.n,'fr');
+    const x=a[k],y=b[k];
+    if(x==null&&y==null) return 0;
+    if(x==null) return 1;
+    if(y==null) return -1;
+    return sn*(x-y);
+  });
+  return v;
+}
+
+function radarActus(sym){
+  const sel=(etat.radar&&etat.radar.selection)||[];
+  const t=sel.find(x=>x.symbole===sym);
+  return (t&&t.actus)?t.actus:[];
+}
+
+function courbeSvg(x){
+  const k=x.k||[];
+  if(k.length<2) return '<p class="qd">Pas assez de points pour tracer la courbe.</p>';
+  const W=660,H=150,gL=52,gR=10,gT=10,gB=22;
+  const mn=Math.min.apply(null,k),mx=Math.max.apply(null,k);
+  const pad=(mx-mn)*0.08||Math.abs(mx)*0.01||1;
+  const y0=mn-pad,y1=mx+pad;
+  const X=i=>gL+i*(W-gL-gR)/(k.length-1);
+  const Y=v=>gT+(y1-v)*(H-gT-gB)/(y1-y0);
+  let d='';
+  k.forEach((v,i)=>{d+=(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1);});
+  const monte=(x.p12==null?0:x.p12)>=0;
+  const c=monte?'var(--pin)':'var(--oxyde)';
+  let g='';
+  for(const v of [mn,mx]){
+    g+='<line x1="'+gL+'" x2="'+(W-gR)+'" y1="'+Y(v).toFixed(1)+'" y2="'+Y(v).toFixed(1)+'" stroke="var(--trait)" stroke-width="1"/>'+
+       '<text x="'+(gL-7)+'" y="'+(Y(v)+4).toFixed(1)+'" text-anchor="end" font-size="11" fill="var(--encre35)" font-family="IBM Plex Mono">'+nf2.format(v)+'</text>';
+  }
+  g+='<text x="'+gL+'" y="'+(H-6)+'" font-size="11" fill="var(--encre35)" font-family="IBM Plex Mono">'+dfCourt.format(dISO(x.k0))+'</text>';
+  g+='<text x="'+(W-gR)+'" y="'+(H-6)+'" text-anchor="end" font-size="11" fill="var(--encre35)" font-family="IBM Plex Mono">'+dfCourt.format(dISO(x.au))+'</text>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Cours d\u2019un an de '+ech(x.n)+'">'+g+
+    '<path d="'+d+'" fill="none" stroke="'+c+'" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'+
+    '<circle cx="'+X(k.length-1).toFixed(1)+'" cy="'+Y(k[k.length-1]).toFixed(1)+'" r="3.4" fill="'+c+'"/></svg>';
+}
+
+function detailValeur(x){
+  const act=radarActus(x.s);
+  let h='<div class="vdet"><h4>'+ech(x.n)+'</h4>'+
+    '<div class="qd">'+ech(x.s)+' \u00b7 '+ech(x.o)+(x.t?' \u00b7 '+ech(x.t):'')+' \u00b7 '+x.j+' jours de cours'+(x.sri?' \u00b7 SRI '+ech(x.sri):'')+'</div>'+
+    courbeSvg(x)+
+    '<p class="qd">Annee ecoulee, un point tous les dix jours de bourse.</p>';
+  if(act.length){
+    h+='<details class="radar-actus" open><summary>'+act.length+' titre'+(act.length>1?'s':'')+' de presse</summary><ul>';
+    for(const a of act) h+='<li><a href="'+ech(a.u)+'" target="_blank" rel="noopener">'+ech(a.t)+'</a> <span class="src">'+ech(a.s||'')+'</span></li>';
+    h+='</ul></details>';
+  }else{
+    h+='<p style="margin:8px 0 0"><a class="radar-cherche" href="https://news.google.com/search?q='+encodeURIComponent(x.n)+'&hl=fr" target="_blank" rel="noopener">Chercher les actus de '+ech(x.n)+'</a></p>';
+  }
+  return h+'</div>';
+}
+
+function rendreRadarVues(){
+  const c=$('radarVues'); c.innerHTML='';
+  for(const [id,lib] of VUES){
+    const b=document.createElement('button');
+    b.type='button'; b.textContent=lib;
+    if(id===rdr.vue) b.classList.add('actif');
+    b.addEventListener('click',()=>{rdr.vue=id;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadar();});
+    c.appendChild(b);
+  }
+  const v=VUES.find(v=>v[0]===rdr.vue);
+  $('radarVueQuoi').textContent=v?v[2]:'';
+}
+
+function rendreRadarFiltres(){
+  const r=etat.radar;
+  const so=$('radarOrigine'), st=$('radarTheme');
+  if(!so.dataset.pret){
+    const origines=Array.from(new Set(r.valeurs.map(x=>x.o))).sort();
+    so.innerHTML='<option value="">Toutes origines</option>'+origines.map(o=>'<option value="'+ech(o)+'">'+ech(o)+'</option>').join('');
+    const themes=Array.from(new Set(r.valeurs.map(x=>x.t).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'fr'));
+    st.innerHTML='<option value="">Tous themes</option>'+themes.map(t=>'<option value="'+ech(t)+'">'+ech(t)+'</option>').join('');
+    so.dataset.pret='1';
+    so.addEventListener('change',()=>{rdr.origine=so.value;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadar();});
+    st.addEventListener('change',()=>{rdr.theme=st.value;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadar();});
+    $('radarQ').addEventListener('input',e=>{rdr.q=e.target.value;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadar();});
+  }
+  so.value=rdr.origine; st.value=rdr.theme;
+}
+
+function rendreRadarTable(){
+  const lignes=radarLignes();
+  const total=lignes.length;
+  const vues=lignes.slice(0,rdr.limite);
+  const pc=v=>v==null?'<td class="val na">\u00b7</td>':'<td class="val '+classePct(v)+'">'+fmtPct(v)+'</td>';
+  let h='<table><thead><tr>';
+  for(const c of COLS){
+    const trie=(c.k===rdr.tri);
+    h+='<th data-k="'+c.k+'" class="'+(trie?'trie':'')+'">'+c.t+(trie?'<span class="fleche">'+(rdr.sens<0?'\u25bc':'\u25b2')+'</span>':'')+'</th>';
+  }
+  h+='</tr></thead><tbody>';
+  for(const x of vues){
+    const ouv=(x.s===rdr.ouverte);
+    const auHaut=(x.h!=null&&x.h>=-1);
+    h+='<tr class="ligne'+(ouv?' ouverte':'')+'" data-s="'+ech(x.s)+'">'+
+      '<td><span class="radar-nom" title="'+ech(x.n)+'">'+ech(x.n)+'</span><span class="radar-badge">'+ech(x.o)+'</span>'+
+      (auHaut?'<span class="radar-haut">au plus haut</span>':'')+
+      '<div class="qd mono">'+ech(x.s)+(x.t?' <span class="radar-theme">'+ech(x.t)+'</span>':'')+'</div></td>'+
+      '<td class="mono">'+nf2.format(x.c)+' '+ech(x.d)+'</td>'+
+      pc(x.h)+pc(x.m)+pc(x.p1)+pc(x.p3)+pc(x.p6)+pc(x.p12)+
+      '<td class="mono">'+nf1.format(x.sec)+' %</td></tr>';
+    if(ouv) h+='<tr class="detail"><td colspan="'+COLS.length+'">'+detailValeur(x)+'</td></tr>';
+  }
+  h+='</tbody></table>';
+  if(!total) h='<p class="radar-note">Aucune valeur ne repond a ces criteres.</p>';
+  $('radarTable').innerHTML=h;
+  $('radarCompte').textContent=total?(vues.length+' affichees sur '+total+' valeurs'):'';
+  const plus=$('radarPlus'); plus.innerHTML='';
+  if(total>vues.length){
+    const b=document.createElement('button');
+    b.type='button'; b.className='btnSobre';
+    b.textContent='Afficher les '+Math.min(PAS_AFFICHE,total-vues.length)+' suivantes';
+    b.addEventListener('click',()=>{rdr.limite+=PAS_AFFICHE;rendreRadarTable();});
+    plus.appendChild(b);
+  }
+  $('radarTable').querySelectorAll('th').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const k=th.dataset.k;
+      if(rdr.tri===k) rdr.sens=-rdr.sens;
+      else {rdr.tri=k; rdr.sens=(k==='n')?1:-1;}
+      rdr.ouverte=null; rendreRadarTable();
+    });
+  });
+  $('radarTable').querySelectorAll('tr.ligne').forEach(tr=>{
+    tr.addEventListener('click',()=>{
+      rdr.ouverte=(rdr.ouverte===tr.dataset.s)?null:tr.dataset.s;
+      rendreRadarTable();
+    });
+  });
+}
+
+function rendreRadarThemes(){
+  const ag=(etat.radar&&etat.radar.themes_agrege)||[];
+  if(!ag.length){$('radarThemes').innerHTML='<p class="radar-note">Pas d\u2019agregat par theme dans ce balayage.</p>';return;}
+  const pc=v=>v==null?'<td class="val na">\u00b7</td>':'<td class="val '+classePct(v)+'">'+fmtPct(v)+'</td>';
+  let h='<table><thead><tr><th>Theme</th><th>Valeurs</th><th>1M median</th><th>3M median</th><th>6M median</th><th>Plus forte sur 6 mois</th></tr></thead><tbody>';
+  for(const a of ag){
+    h+='<tr class="cliq" data-t="'+ech(a.t)+'"><td>'+ech(a.t)+'</td><td class="mono">'+a.n+'</td>'+pc(a.m1)+pc(a.m3)+pc(a.m6)+
+       '<td>'+(a.top?('<span class="radar-nom" title="'+ech(a.top.n)+'">'+ech(a.top.n)+'</span> <span class="val '+classePct(a.top.p6)+'">'+fmtPct(a.top.p6)+'</span>'):'\u00b7')+'</td></tr>';
+  }
+  h+='</tbody></table>';
+  $('radarThemes').innerHTML=h;
+  $('radarThemes').querySelectorAll('tr.cliq').forEach(tr=>{
+    tr.addEventListener('click',()=>{
+      rdr.theme=tr.dataset.t; rdr.vue='tout'; rdr.ouverte=null; rdr.limite=PAS_AFFICHE;
+      rendreRadar();
+      $('radarTable').scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
+}
+
+function rendreRadarFonds(){
+  const f=(etat.radar&&etat.radar.fonds)||[];
+  const n=(etat.radar&&etat.radar.notes)||[];
+  let h='';
+  if(f.length){
+    h+='<table><thead><tr><th>Fonds</th><th>Etoiles</th><th>Risque</th><th>Releve le</th><th>Source</th></tr></thead><tbody>';
+    for(const x of f){
+      const et=(x.etoiles==null)?'\u00b7':'<span class="etoiles">'+'\u2605'.repeat(x.etoiles)+'</span>';
+      h+='<tr><td>'+ech(x.nom)+'<div class="qd mono">'+ech(x.symbole)+'</div></td><td>'+et+'</td>'+
+         '<td class="mono">'+(x.risque==null?'\u00b7':x.risque+' / 5')+'</td>'+
+         '<td class="mono">'+dfPlein.format(dISO(x.au))+'</td><td class="qd">'+ech(x.source)+'</td></tr>';
     }
-    h+='</tbody></table>';
-    $('radarTable').innerHTML=h;
+    h+='</tbody></table><p class="radar-note">Notes attribuees par Morningstar et relayees par la source de cours : une lecture du passe ajuste du risque, pas un avis de la page.</p>';
+  }else{
+    h+='<p class="radar-note">Aucune note de fonds dans ce balayage.</p>';
   }
-  const ol=$('radarThemes'); ol.innerHTML='';
-  for(const t of (r.themes||[])){
-    const li=document.createElement('li');
-    li.innerHTML='<span class="radar-nom" style="max-width:none">'+ech(t.nom)+'</span> <span class="qd mono">'+ech(t.symbole)+'</span> \u2014 3 mois <span class="val '+classePct(t.perf_3m==null?0:t.perf_3m)+'">'+(t.perf_3m==null?'\u00b7':fmtPct(t.perf_3m))+'</span> \u00b7 1 mois '+(t.perf_1m==null?'\u00b7':fmtPct(t.perf_1m))+' \u00b7 1 an '+(t.perf_1a==null?'\u00b7':fmtPct(t.perf_1a));
-    ol.appendChild(li);
+  if(n.length){
+    h+='<p class="radar-note">Releves manuels au depot : '+n.length+'.</p>';
+  }else{
+    h+='<p class="radar-note">Aucun releve manuel au depot (SRI, etoiles d\u2019ETF) : le fichier des releves est vide.</p>';
   }
+  $('radarFonds').innerHTML=h;
+}
+
+function rendreRadar(){
+  const r=etat.radar;
+  const btn=$('btnRadar');
+  if(!radarDispo()){
+    btn.hidden=true; fermerRadar();
+    return;
+  }
+  btn.hidden=false;
+  const s=r.seuils||{};
+  $('radarPastille').textContent=r.passants_total;
+  $('radarSous').textContent='Balayage du '+dfPlein.format(new Date(r.genere_le))+' \u00b7 '+r.univers+' valeurs examinees, '+r.recus+' series recues \u00b7 '+r.passants_total+' passent les filtres du repli.';
+  rendreRadarVues();
+  rendreRadarFiltres();
+  rendreRadarTable();
+  rendreRadarThemes();
+  rendreRadarFonds();
+}
+
+function ouvrirRadar(){
+  if(!radarDispo()) return;
+  $('radarFond').hidden=false; $('radar').hidden=false;
+  requestAnimationFrame(()=>{$('radarFond').classList.add('ouvert');$('radar').classList.add('ouvert');});
+  $('btnRadar').setAttribute('aria-expanded','true');
+  document.body.style.overflow='hidden';
+  $('btnFermerRadar').focus();
+}
+function fermerRadar(){
+  const t=$('radar'), f=$('radarFond');
+  t.classList.remove('ouvert'); f.classList.remove('ouvert');
+  $('btnRadar').setAttribute('aria-expanded','false');
+  document.body.style.overflow='';
+  setTimeout(()=>{if(!t.classList.contains('ouvert')){t.hidden=true;f.hidden=true;}},260);
 }
 
 function majHeures(){
@@ -773,7 +1066,14 @@ $('btnCle').addEventListener('click',()=>{
   $('app').hidden=true;$('auth').hidden=false;$('cle').value='';$('erreurAuth').hidden=true;
 });
 $('btnFermerDetail').addEventListener('click',()=>selectionner(etat.selection));
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&etat.selection)selectionner(etat.selection);});
+$('btnRadar').addEventListener('click',ouvrirRadar);
+$('btnFermerRadar').addEventListener('click',fermerRadar);
+$('radarFond').addEventListener('click',fermerRadar);
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape') return;
+  if(!$('radar').hidden&&$('radar').classList.contains('ouvert')){fermerRadar();return;}
+  if(etat.selection) selectionner(etat.selection);
+});
 
 if(cleActuelle()||window.__TEST_DATA__) demarrer();
 else $('auth').hidden=false;
