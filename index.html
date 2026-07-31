@@ -101,6 +101,27 @@ button:focus-visible,input:focus-visible,summary:focus-visible,li:focus-visible{
 .chip.up{background:rgba(46,107,79,.1)} .chip.down{background:rgba(176,67,44,.1)}
 .carte svg{width:100%;height:30px;margin-top:8px;display:block}
 
+/* radar */
+.radarbloc{margin-top:16px;padding:20px}
+.radar-sous{color:var(--encre60);font-size:13px;margin:5px 0 0}
+.radar-h3{font-family:"Fraunces",serif;font-weight:600;font-size:16px;margin:18px 0 2px}
+.radar-note{color:var(--encre60);font-size:12.5px;margin:8px 0 0}
+#radarTable{overflow-x:auto;margin-top:12px}
+#radarTable table{border-collapse:collapse;width:100%;font-size:12.5px}
+#radarTable th{text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--encre60);padding:6px 10px 6px 0;border-bottom:1px solid var(--trait);white-space:nowrap}
+#radarTable td{padding:7px 10px 7px 0;border-bottom:1px solid var(--trait);vertical-align:top}
+#radarTable td.mono,#radarTable td.val{font-family:"IBM Plex Mono",monospace;white-space:nowrap}
+.radar-nom{font-weight:500;display:inline-block;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.radar-badge{font-size:10px;font-family:"IBM Plex Mono",monospace;color:var(--encre60);border:1px solid var(--trait);border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+.radar-actus summary{cursor:pointer;color:var(--laiton);font-weight:500;font-size:12px}
+.radar-actus ul{margin:6px 0 0;padding-left:16px}
+.radar-actus li{margin:5px 0;white-space:normal}
+.radar-actus a{color:var(--encre);text-decoration:underline;text-underline-offset:2px}
+.radar-actus .src{color:var(--encre35);font-family:"IBM Plex Mono",monospace;font-size:10.5px}
+a.radar-cherche{color:var(--encre60);font-size:12px;text-decoration:underline;text-underline-offset:2px}
+.radar-themes{margin:8px 0 0;padding-left:20px;font-size:13px}
+.radar-themes li{margin:4px 0}
+
 /* pied */
 footer{margin-top:34px;border-top:1px solid var(--trait);padding-top:16px}
 .reserves summary{cursor:pointer;font-weight:500;font-size:13px}
@@ -160,6 +181,16 @@ footer{margin-top:34px;border-top:1px solid var(--trait);padding-top:16px}
       <div class="classement-tete"><h2>Classement</h2><span id="dateClassement" class="mono"></span></div>
       <ol id="listeClassement"></ol>
     </aside>
+  </section>
+
+  <section id="radar" class="panneau radarbloc" hidden>
+    <h2>Radar</h2>
+    <p class="radar-sous" id="radarSous"></p>
+    <div id="radarTable"></div>
+    <h3 class="radar-h3">Themes en mouvement</h3>
+    <p class="radar-note">Les ETF thematiques de l'univers, classes par performance 3 mois.</p>
+    <ol id="radarThemes" class="radar-themes"></ol>
+    <p class="radar-note">Le Radar liste ce qui passe des filtres ecrits, sur des donnees passees. Rien n'y predit l'avenir, rien n'y est un conseil.</p>
   </section>
 
   <section id="detail" class="panneau" hidden>
@@ -296,13 +327,14 @@ function fmtPrix(v,dev){return nf2.format(v)+(dev==='USD'?' $':' \u20ac');}
 function fmtPct(v){return (v>=0?'+':'-')+nf1.format(Math.abs(v))+' %';}
 function classePct(v){return v>=0?'up':'down';}
 const fHM=d=>String(d.getHours()).padStart(2,'0')+'h'+String(d.getMinutes()).padStart(2,'0');
+const ech=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 const etat={
   periode:localStorage.getItem('sb_periode')||'1A',
   selection:null, survolSym:null,
   data:null, pf:[], parSym:{}, exclusions:[],
   calc:null, refsLignes:{},
-  heureLecture:null, heureGravure:null, echecLecture:false, mnt:null
+  heureLecture:null, heureGravure:null, echecLecture:false, mnt:null, radar:null
 };
 const $=id=>document.getElementById(id);
 
@@ -338,6 +370,7 @@ async function chargerTout(){
     pfMd=window.__TEST_DATA__.portefeuille;
     textesSeries=window.__TEST_DATA__.series;
     texteExcl=window.__TEST_DATA__.exclusions||'';
+    etat.radar=window.__TEST_DATA__.radar?JSON.parse(window.__TEST_DATA__.radar):null;
   }else{
     const [md,fichiers]=await Promise.all([ghTexte('BOURSE/savoir/PORTEFEUILLE.md'),ghListe('BOURSE/series')]);
     pfMd=md;
@@ -349,6 +382,8 @@ async function chargerTout(){
       const c=await ghApi('commits?path=BOURSE/series&per_page=1&sha=main');
       etat.heureGravure=(c&&c[0])?new Date(c[0].commit.committer.date):null;
     }catch(err){ etat.heureGravure=null; }
+    try{ etat.radar=JSON.parse(await ghTexte('BOURSE/radar/RADAR.json')); }
+    catch(err){ etat.radar=null; }
   }
   const data=mergeSeries(textesSeries.map(parseCsv));
   const exclusions=parseExclusions(texteExcl);
@@ -387,6 +422,7 @@ function toutRendre(){
   rendreCartes();
   rendreDetail();
   rendreReserves();
+  rendreRadar();
   const rows=etat.data.rows;
   $('sousTitre').textContent=etat.pf.length+' lignes \u00b7 lecture directe du depot prive \u00b7 source Yahoo Finance';
   $('piedInfos').textContent='Derniere date au depot : '+dfPlein.format(dISO(rows[rows.length-1].date))+' \u00b7 '+rows.length+' jours de cotation \u00b7 les cours ne valent pas conseil';
@@ -648,6 +684,40 @@ function rendreReserves(){
     notes.push('Valeur ecartee du trace : '+ex.symbole+' au '+dfPlein.format(dISO(ex.date))+' - '+ex.motif);
   }
   for(const nte of notes){const li=document.createElement('li');li.textContent=nte;ul.appendChild(li);}
+}
+
+function rendreRadar(){
+  const sec=$('radar'), r=etat.radar;
+  if(!r||!r.selection){sec.hidden=true;return;}
+  sec.hidden=false;
+  const s=r.seuils||{};
+  $('radarSous').textContent='Balayage du '+dfPlein.format(new Date(r.genere_le))+' \u00b7 '+r.univers+' valeurs examinees, '+r.recus+' series recues \u00b7 filtres : recul de '+Math.abs(s.ecart_haut_max)+' a '+Math.abs(s.ecart_haut_min)+' % depuis le plus haut d\u2019un an, au-dessus de la moyenne 200 jours, 12 derniers mois positifs \u00b7 '+r.passants_total+' valeurs passent'+(r.passants_total>r.selection.length?', les '+r.selection.length+' premieres par performance 6 mois ci-dessous':'');
+  if(!r.selection.length){$('radarTable').innerHTML='<p class="radar-note">Aucune valeur ne passe les filtres aujourd\u2019hui.</p>';}
+  else{
+    let h='<table><thead><tr><th>Valeur</th><th>Dernier</th><th>Vs haut 1 an</th><th>Vs moy. 200 j</th><th>1M</th><th>6M</th><th>1A</th><th>Secousse/j</th><th>Actus</th></tr></thead><tbody>';
+    for(const x of r.selection){
+      const pc=v=>v==null?'<td class="val na">\u00b7</td>':'<td class="val '+classePct(v)+'">'+fmtPct(v)+'</td>';
+      let act;
+      if(x.actus&&x.actus.length){
+        act='<details class="radar-actus"><summary>'+x.actus.length+' titre'+(x.actus.length>1?'s':'')+'</summary><ul>';
+        for(const a of x.actus) act+='<li><a href="'+ech(a.u)+'" target="_blank" rel="noopener">'+ech(a.t)+'</a> <span class="src">'+ech(a.s||'')+'</span></li>';
+        act+='</ul></details>';
+      }else{
+        act='<a class="radar-cherche" href="https://news.google.com/search?q='+encodeURIComponent(x.nom)+'&hl=fr" target="_blank" rel="noopener">chercher</a>';
+      }
+      h+='<tr><td><span class="radar-nom" title="'+ech(x.nom)+'">'+ech(x.nom)+'</span><span class="radar-badge">'+ech(x.origine)+'</span><div class="qd mono">'+ech(x.symbole)+'</div></td>'+
+         '<td class="mono">'+nf2.format(x.dernier)+' '+ech(x.devise)+'</td>'+pc(x.ecart_haut52)+pc(x.vs_mm200)+pc(x.perf_1m)+pc(x.perf_6m)+pc(x.perf_1a)+
+         '<td class="mono">'+nf1.format(x.secousse)+' %</td><td>'+act+'</td></tr>';
+    }
+    h+='</tbody></table>';
+    $('radarTable').innerHTML=h;
+  }
+  const ol=$('radarThemes'); ol.innerHTML='';
+  for(const t of (r.themes||[])){
+    const li=document.createElement('li');
+    li.innerHTML='<span class="radar-nom" style="max-width:none">'+ech(t.nom)+'</span> <span class="qd mono">'+ech(t.symbole)+'</span> \u2014 3 mois <span class="val '+classePct(t.perf_3m==null?0:t.perf_3m)+'">'+(t.perf_3m==null?'\u00b7':fmtPct(t.perf_3m))+'</span> \u00b7 1 mois '+(t.perf_1m==null?'\u00b7':fmtPct(t.perf_1m))+' \u00b7 1 an '+(t.perf_1a==null?'\u00b7':fmtPct(t.perf_1a));
+    ol.appendChild(li);
+  }
 }
 
 function majHeures(){
