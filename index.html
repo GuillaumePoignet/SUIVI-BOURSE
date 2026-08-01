@@ -118,6 +118,16 @@ button:focus-visible,input:focus-visible,summary:focus-visible,li:focus-visible{
 .radar-reserve{color:var(--encre60);font-size:12.5px;margin:24px 0 0;padding-top:14px;border-top:1px solid var(--trait)}
 
 /* commandes */
+.radar-familles{display:flex;gap:8px;margin:4px 0 2px}
+.radar-familles button{border:1px solid var(--trait);background:var(--paper);border-radius:8px;padding:7px 15px;font-size:13px;font-weight:600;color:var(--encre60)}
+.radar-familles button.actif{background:var(--laiton);color:var(--paper);border-color:var(--laiton)}
+.radar-aide{margin:10px 0 0}
+.radar-aide summary{cursor:pointer;color:var(--laiton);font-weight:500;font-size:12.5px}
+.radar-aide ul{margin:8px 0 0;padding-left:18px;color:var(--encre60);font-size:12.5px}
+.radar-aide li{margin:4px 0}
+.radar-aide b{color:var(--encre)}
+.radar-filtres input.prix{flex:none;width:100px;min-width:0}
+.vdet-etat{font-size:13px;margin:8px 0 0}
 .radar-vues{display:flex;border:1px solid var(--trait);border-radius:8px;overflow:hidden;background:var(--paper);margin:14px 0 10px;flex-wrap:wrap}
 .radar-vues button{padding:7px 13px;font-size:12.5px;font-weight:500;color:var(--encre60);flex:1;white-space:nowrap}
 .radar-vues button+button{border-left:1px solid var(--trait)}
@@ -248,13 +258,25 @@ footer{margin-top:34px;border-top:1px solid var(--trait);padding-top:16px}
       <p class="radar-sous" id="radarSous"></p>
     </div>
     <div class="tiroir-corps">
+      <div class="radar-familles" id="radarFamilles" role="group" aria-label="Famille"></div>
       <div class="radar-vues" id="radarVues" role="group" aria-label="Angle de vue"></div>
       <p class="radar-vue-quoi" id="radarVueQuoi"></p>
       <div class="radar-filtres">
         <select id="radarOrigine" aria-label="Origine"></select>
         <select id="radarTheme" aria-label="Theme"></select>
+        <input id="radarPrix" type="number" min="0" step="1" placeholder="Prix max" aria-label="Prix maximum d une part" class="prix">
         <input id="radarQ" type="search" placeholder="Chercher un nom ou un symbole" aria-label="Chercher">
       </div>
+      <details class="radar-aide">
+        <summary>Que veulent dire les colonnes</summary>
+        <ul>
+          <li><b>Prix</b> : ce que coute une part aujourd\u2019hui. C\u2019est le ticket d\u2019entree, pas un jugement sur la cherte de la valeur.</li>
+          <li><b>Vs haut 1 an</b> : ecart au plus haut des douze derniers mois. Zero veut dire au sommet de son annee.</li>
+          <li><b>Vs moy. 200 j</b> : ecart a la moyenne des 200 derniers jours. Positif, le cours est au-dessus de sa tendance longue.</li>
+          <li><b>1M, 3M, 6M, 1A</b> : ce que la valeur a gagne ou perdu sur un mois, trois mois, six mois, un an.</li>
+          <li><b>Secousse/j</b> : variation moyenne d\u2019un jour sur l\u2019autre depuis trois mois. Plus le chiffre est gros, plus le cours bouge fort.</li>
+        </ul>
+      </details>
       <p class="radar-compte" id="radarCompte"></p>
       <div id="radarTable"></div>
       <div class="radar-plus" id="radarPlus"></div>
@@ -763,37 +785,55 @@ function rendreReserves(){
   for(const nte of notes){const li=document.createElement('li');li.textContent=nte;ul.appendChild(li);}
 }
 
-/* ===== Radar : tiroir lateral, trois angles de vue ===== */
+/* ===== Radar : tiroir lateral, deux familles, quatre angles de vue ===== */
+const FAMILLES=[['actions','Actions'],['etf','ETF']];
+/* Seuils de la vue Debut de montee, par famille. Les ETF bougent plus
+   lentement que les actions : leurs bornes sont plus basses. Decides
+   par le proprietaire le 01/08/2026. */
+const DEBUT={
+  actions:{p6max:15,p1min:4,mmax:10},
+  etf:{p6max:20,p1min:1.5,mmax:10}
+};
 const VUES=[
-  ['montee','Montee','Les valeurs au-dessus de leur moyenne 200 jours, classees par performance 6 mois. Celles qui touchent leur plus haut d\u2019un an sont marquees.'],
-  ['repli','Repli dans la montee','Les valeurs qui reculent de 8 a 30 % depuis leur plus haut d\u2019un an, restent au-dessus de la moyenne 200 jours et gagnent sur douze mois.'],
-  ['tout','Tout','Les 1036 valeurs de l\u2019univers, sans filtre.']
+  ['montee','Montee','Au-dessus de la moyenne des 200 derniers jours, classe par les six derniers mois. Ce qui a deja beaucoup monte arrive en tete.'],
+  ['debut','Debut de montee','Six mois encore modestes, dernier mois en hausse, a peine repasse au-dessus de la moyenne 200 jours. Classe par le dernier mois.'],
+  ['repli','Repli dans la montee','Recul de 8 a 30 % depuis le plus haut d\u2019un an, toujours au-dessus de la moyenne 200 jours, douze mois positifs.'],
+  ['tout','Tout','Toutes les valeurs de la famille, sans filtre.']
 ];
 const COLS=[
-  {k:'n',  t:'Valeur',        f:'txt'},
-  {k:'c',  t:'Dernier',       f:'prix'},
-  {k:'h',  t:'Vs haut 1 an',  f:'pct'},
-  {k:'m',  t:'Vs moy. 200 j', f:'pct'},
-  {k:'p1', t:'1M',            f:'pct'},
-  {k:'p3', t:'3M',            f:'pct'},
-  {k:'p6', t:'6M',            f:'pct'},
-  {k:'p12',t:'1A',            f:'pct'},
-  {k:'sec',t:'Secousse/j',    f:'num'}
+  {k:'n',  t:'Valeur'},
+  {k:'c',  t:'Prix'},
+  {k:'h',  t:'Vs haut 1 an'},
+  {k:'m',  t:'Vs moy. 200 j'},
+  {k:'p1', t:'1M'},
+  {k:'p3', t:'3M'},
+  {k:'p6', t:'6M'},
+  {k:'p12',t:'1A'},
+  {k:'sec',t:'Secousse/j'}
 ];
 const PAS_AFFICHE=100;
-const rdr={vue:'montee',origine:'',theme:'',q:'',tri:'p6',sens:-1,ouverte:null,limite:PAS_AFFICHE};
+const rdr={famille:'actions',vue:'montee',origine:'',theme:'',q:'',prixMax:'',
+           tri:'p6',sens:-1,ouverte:null,limite:PAS_AFFICHE};
 
 function radarDispo(){return !!(etat.radar&&etat.radar.valeurs&&etat.radar.valeurs.length);}
+function radarFamille(v){return v.o==='ETF'?'etf':'actions';}
+function triParDefaut(){return rdr.vue==='debut'?'p1':'p6';}
 
 function radarLignes(){
-  const r=etat.radar, s=r.seuils||{};
-  let v=r.valeurs.slice();
+  const r=etat.radar, s=r.seuils||{}, d=DEBUT[rdr.famille];
+  let v=r.valeurs.filter(x=>radarFamille(x)===rdr.famille);
   if(rdr.vue==='montee') v=v.filter(x=>x.m!=null&&x.m>0);
+  else if(rdr.vue==='debut') v=v.filter(x=>
+    x.m!=null && x.m>0 && x.m<=d.mmax &&
+    x.p1!=null && x.p1>=d.p1min &&
+    x.p6!=null && x.p6<=d.p6max);
   else if(rdr.vue==='repli') v=v.filter(x=>
     x.j>=s.jours_min && x.h>=s.ecart_haut_min && x.h<=s.ecart_haut_max &&
     x.m>s.vs_mm200_min && x.p12!=null && x.p12>s.perf_1a_min);
   if(rdr.origine) v=v.filter(x=>x.o===rdr.origine);
   if(rdr.theme) v=v.filter(x=>x.t===rdr.theme);
+  const px=parseFloat(rdr.prixMax);
+  if(!isNaN(px)&&px>0) v=v.filter(x=>x.c<=px);
   const q=rdr.q.trim().toLowerCase();
   if(q) v=v.filter(x=>x.s.toLowerCase().indexOf(q)>=0||x.n.toLowerCase().indexOf(q)>=0);
   const k=rdr.tri, sn=rdr.sens;
@@ -839,10 +879,23 @@ function courbeSvg(x){
     '<circle cx="'+X(k.length-1).toFixed(1)+'" cy="'+Y(k[k.length-1]).toFixed(1)+'" r="3.4" fill="'+c+'"/></svg>';
 }
 
+/* Une phrase en clair sur l'etat de la valeur. Constat sur les cours
+   passes : ni prevision, ni conseil. */
+function phraseEtat(x){
+  const p=[];
+  if(x.m!=null) p.push(x.m>0?('au-dessus de sa moyenne des 200 derniers jours de '+fmtPct(x.m))
+                            :('sous sa moyenne des 200 derniers jours de '+fmtPct(x.m)));
+  if(x.h!=null) p.push(x.h>=-1?'au plus haut de son annee':('en recul de '+nf1.format(Math.abs(x.h))+' % depuis son plus haut d\u2019un an'));
+  if(x.p1!=null) p.push('dernier mois '+fmtPct(x.p1));
+  if(x.p6!=null) p.push('six mois '+fmtPct(x.p6));
+  return p.join(', ')+'.';
+}
+
 function detailValeur(x){
   const act=radarActus(x.s);
   let h='<div class="vdet"><h4>'+ech(x.n)+'</h4>'+
     '<div class="qd">'+ech(x.s)+' \u00b7 '+ech(x.o)+(x.t?' \u00b7 '+ech(x.t):'')+' \u00b7 '+x.j+' jours de cours'+(x.sri?' \u00b7 SRI '+ech(x.sri):'')+'</div>'+
+    '<p class="vdet-etat">'+phraseEtat(x)+' Une part vaut '+nf2.format(x.c)+' '+ech(x.d)+'.</p>'+
     courbeSvg(x)+
     '<p class="qd">Annee ecoulee, un point tous les dix jours de bourse.</p>';
   if(act.length){
@@ -855,33 +908,62 @@ function detailValeur(x){
   return h+'</div>';
 }
 
+function rendreRadarFamilles(){
+  const c=$('radarFamilles'); c.innerHTML='';
+  const comptes={actions:0,etf:0};
+  for(const v of etat.radar.valeurs) comptes[radarFamille(v)]++;
+  for(const [id,lib] of FAMILLES){
+    const b=document.createElement('button');
+    b.type='button'; b.textContent=lib+' ('+comptes[id]+')';
+    if(id===rdr.famille) b.classList.add('actif');
+    b.addEventListener('click',()=>{
+      rdr.famille=id; rdr.origine=''; rdr.theme=''; rdr.ouverte=null;
+      rdr.limite=PAS_AFFICHE; rdr.tri=triParDefaut(); rdr.sens=-1;
+      $('radarOrigine').dataset.pret=''; rendreRadar();
+    });
+    c.appendChild(b);
+  }
+}
+
 function rendreRadarVues(){
   const c=$('radarVues'); c.innerHTML='';
   for(const [id,lib] of VUES){
     const b=document.createElement('button');
     b.type='button'; b.textContent=lib;
     if(id===rdr.vue) b.classList.add('actif');
-    b.addEventListener('click',()=>{rdr.vue=id;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadar();});
+    b.addEventListener('click',()=>{
+      rdr.vue=id; rdr.ouverte=null; rdr.limite=PAS_AFFICHE;
+      rdr.tri=triParDefaut(); rdr.sens=-1; rendreRadar();
+    });
     c.appendChild(b);
   }
   const v=VUES.find(v=>v[0]===rdr.vue);
-  $('radarVueQuoi').textContent=v?v[2]:'';
+  let t=v?v[2]:'';
+  if(rdr.vue==='debut'){
+    const d=DEBUT[rdr.famille];
+    t+=' Seuils de la famille : six mois au plus '+d.p6max+' %, dernier mois au moins '+d.p1min+' %, au plus '+d.mmax+' % au-dessus de la moyenne 200 jours.';
+  }
+  $('radarVueQuoi').textContent=t;
 }
 
 function rendreRadarFiltres(){
-  const r=etat.radar;
   const so=$('radarOrigine'), st=$('radarTheme');
   if(!so.dataset.pret){
-    const origines=Array.from(new Set(r.valeurs.map(x=>x.o))).sort();
+    const pop=etat.radar.valeurs.filter(x=>radarFamille(x)===rdr.famille);
+    const origines=Array.from(new Set(pop.map(x=>x.o))).sort();
     so.innerHTML='<option value="">Toutes origines</option>'+origines.map(o=>'<option value="'+ech(o)+'">'+ech(o)+'</option>').join('');
-    const themes=Array.from(new Set(r.valeurs.map(x=>x.t).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'fr'));
+    const themes=Array.from(new Set(pop.map(x=>x.t).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'fr'));
     st.innerHTML='<option value="">Tous themes</option>'+themes.map(t=>'<option value="'+ech(t)+'">'+ech(t)+'</option>').join('');
     so.dataset.pret='1';
-    so.addEventListener('change',()=>{rdr.origine=so.value;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadar();});
-    st.addEventListener('change',()=>{rdr.theme=st.value;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadar();});
-    $('radarQ').addEventListener('input',e=>{rdr.q=e.target.value;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadar();});
   }
-  so.value=rdr.origine; st.value=rdr.theme;
+  if(!so.dataset.branche){
+    so.addEventListener('change',()=>{rdr.origine=so.value;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadarTable();});
+    st.addEventListener('change',()=>{rdr.theme=st.value;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadarTable();});
+    $('radarQ').addEventListener('input',e=>{rdr.q=e.target.value;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadarTable();});
+    $('radarPrix').addEventListener('input',e=>{rdr.prixMax=e.target.value;rdr.ouverte=null;rdr.limite=PAS_AFFICHE;rendreRadarTable();});
+    so.dataset.branche='1';
+  }
+  so.value=rdr.origine; st.value=rdr.theme; $('radarPrix').value=rdr.prixMax;
 }
 
 function rendreRadarTable(){
@@ -908,7 +990,7 @@ function rendreRadarTable(){
     if(ouv) h+='<tr class="detail"><td colspan="'+COLS.length+'">'+detailValeur(x)+'</td></tr>';
   }
   h+='</tbody></table>';
-  if(!total) h='<p class="radar-note">Aucune valeur ne repond a ces criteres.</p>';
+  if(!total) h='<p class="radar-note">Aucune valeur de cette famille ne repond a ces criteres aujourd\u2019hui.</p>';
   $('radarTable').innerHTML=h;
   $('radarCompte').textContent=total?(vues.length+' affichees sur '+total+' valeurs'):'';
   const plus=$('radarPlus'); plus.innerHTML='';
@@ -987,9 +1069,9 @@ function rendreRadar(){
     return;
   }
   btn.hidden=false;
-  const s=r.seuils||{};
   $('radarPastille').textContent=r.passants_total;
-  $('radarSous').textContent='Balayage du '+dfPlein.format(new Date(r.genere_le))+' \u00b7 '+r.univers+' valeurs examinees, '+r.recus+' series recues \u00b7 '+r.passants_total+' passent les filtres du repli.';
+  $('radarSous').textContent='Balayage du '+dfPlein.format(new Date(r.genere_le))+' \u00b7 '+r.univers+' valeurs examinees, '+r.recus+' series recues.';
+  rendreRadarFamilles();
   rendreRadarVues();
   rendreRadarFiltres();
   rendreRadarTable();
