@@ -1,0 +1,26 @@
+name: page v7
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Appliquer le patch
+        run: python3 outils/patch_page_v7.py
+      - name: Controle d empreinte
+        run: |
+          ATTENDU=a872d30dd6c56cec42e590467ea3b41362f150bc
+          OBTENU=$(git hash-object index.html)
+          echo "attendu $ATTENDU"
+          echo "obtenu  $OBTENU"
+          test "$ATTENDU" = "$OBTENU"
+      - name: Graver
+        run: |
+          git config user.name agent-bourse
+          git config user.email actions@users.noreply.github.com
+          git add index.html
+          git commit -m "Page v7 : courbe cinq ans, colonnes longues periodes, anciennete de cotation, SRI et etoiles"
+          git push
