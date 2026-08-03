@@ -273,7 +273,11 @@ footer{margin-top:34px;border-top:1px solid var(--trait);padding-top:16px}
           <li><b>Prix</b> : ce que coute une part aujourd'hui. C'est le ticket d'entree, pas un jugement sur la cherte de la valeur.</li>
           <li><b>Vs haut 1 an</b> : ecart au plus haut des douze derniers mois. Zero veut dire au sommet de son annee.</li>
           <li><b>Vs moy. 200 j</b> : ecart a la moyenne des 200 derniers jours. Positif, le cours est au-dessus de sa tendance longue.</li>
-          <li><b>1M, 3M, 6M, 1A</b> : ce que la valeur a gagne ou perdu sur un mois, trois mois, six mois, un an.</li>
+          <li><b>Vs haut 5 ans</b> : le meme ecart, mesure sur cinq ans. Une valeur peut etre au sommet de son annee et rester loin de son sommet de 2021.</li>
+          <li><b>1M, 3M, 6M, 1A, 3A, 5A</b> : ce que la valeur a gagne ou perdu sur un mois, trois mois, six mois, un an, trois ans, cinq ans. Une case vide veut dire que la source ne remonte pas si loin.</li>
+          <li><b>Cote depuis</b> : annee du premier cours detenu par la source. Ce n'est pas une date d'introduction : elle affiche 1962 pour les vieilles valeurs americaines, qui est le plancher de la source, et repart a l'annee du changement quand un produit change de code ou de place.</li>
+          <li><b>SRI</b> (ETF seulement) : indicateur de risque reglementaire de 1 a 7, lu dans le document d'informations cles de l'emetteur. Releve a la main, vide tant que le releve n'est pas fait.</li>
+          <li><b>Etoiles</b> (ETF seulement) : note Morningstar de 1 a 5, avis attribue a Morningstar. Releve a la main : la source de cours ne publie ces notes que pour les fonds a valeur liquidative, jamais pour les ETF.</li>
           <li><b>Secousse/j</b> : variation moyenne d'un jour sur l'autre depuis trois mois. Plus le chiffre est gros, plus le cours bouge fort.</li>
         </ul>
       </details>
@@ -800,17 +804,26 @@ const VUES=[
   ['repli','Repli dans la montee','Recul de 8 a 30 % depuis le plus haut d\u2019un an, toujours au-dessus de la moyenne 200 jours, douze mois positifs.'],
   ['tout','Tout','Toutes les valeurs de la famille, sans filtre.']
 ];
-const COLS=[
+/* Colonnes du tableau. Les deux dernieres ne sortent que pour la
+   famille ETF : SRI et etoiles sont des releves manuels tenus dans
+   radar/NOTES.csv, ils ne concernent que les produits geres. */
+const COLS_BASE=[
   {k:'n',  t:'Valeur'},
   {k:'c',  t:'Prix'},
   {k:'h',  t:'Vs haut 1 an'},
+  {k:'h5', t:'Vs haut 5 ans'},
   {k:'m',  t:'Vs moy. 200 j'},
   {k:'p1', t:'1M'},
   {k:'p3', t:'3M'},
   {k:'p6', t:'6M'},
   {k:'p12',t:'1A'},
-  {k:'sec',t:'Secousse/j'}
+  {k:'p36',t:'3A'},
+  {k:'p60',t:'5A'},
+  {k:'sec',t:'Secousse/j'},
+  {k:'ftd',t:'Cote depuis'}
 ];
+const COLS_ETF=[{k:'sri',t:'SRI'},{k:'et',t:'Etoiles'}];
+function cols(){return rdr.famille==='etf'?COLS_BASE.concat(COLS_ETF):COLS_BASE;}
 const PAS_AFFICHE=100;
 const rdr={famille:'actions',vue:'montee',origine:'',theme:'',q:'',prixMax:'',
            tri:'p6',sens:-1,ouverte:null,limite:PAS_AFFICHE};
@@ -839,6 +852,20 @@ function radarLignes(){
   const k=rdr.tri, sn=rdr.sens;
   v.sort((a,b)=>{
     if(k==='n') return sn*a.n.localeCompare(b.n,'fr');
+    if(k==='ftd'){
+      const u=a.ftd||'', w=b.ftd||'';
+      if(!u&&!w) return 0;
+      if(!u) return 1;
+      if(!w) return -1;
+      return sn*(u<w?-1:u>w?1:0);
+    }
+    if(k==='sri'||k==='et'){
+      const u=parseFloat(a[k]), w=parseFloat(b[k]);
+      if(isNaN(u)&&isNaN(w)) return 0;
+      if(isNaN(u)) return 1;
+      if(isNaN(w)) return -1;
+      return sn*(u-w);
+    }
     const x=a[k],y=b[k];
     if(x==null&&y==null) return 0;
     if(x==null) return 1;
@@ -852,6 +879,22 @@ function radarActus(sym){
   const sel=(etat.radar&&etat.radar.selection)||[];
   const t=sel.find(x=>x.symbole===sym);
   return (t&&t.actus)?t.actus:[];
+}
+
+/* Ce que couvre la courbe gravee : le balayage ecrit sa profondeur et
+   son pas depuis le 02/08/2026. Repli sur l'ancien format si un
+   fichier plus ancien est servi. */
+function profondeurCourbe(){
+  const r=etat.radar||{};
+  const duree={'5y':'cinq ans','2y':'deux ans','1y':'un an'}[r.profondeur]||'un an';
+  const n=r.pas_courbe||10;
+  const mots={10:'dix',20:'vingt',30:'trente'};
+  return {duree:duree, pas:(mots[n]||n)+' jours de bourse'};
+}
+function etoiles(n){
+  const v=parseFloat(n);
+  if(isNaN(v)) return ech(String(n));
+  return '\u2605'.repeat(Math.max(0,Math.min(5,Math.round(v))));
 }
 
 function courbeSvg(x){
@@ -874,7 +917,7 @@ function courbeSvg(x){
   }
   g+='<text x="'+gL+'" y="'+(H-6)+'" font-size="11" fill="var(--encre35)" font-family="IBM Plex Mono">'+dfCourt.format(dISO(x.k0))+'</text>';
   g+='<text x="'+(W-gR)+'" y="'+(H-6)+'" text-anchor="end" font-size="11" fill="var(--encre35)" font-family="IBM Plex Mono">'+dfCourt.format(dISO(x.au))+'</text>';
-  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Cours d\u2019un an de '+ech(x.n)+'">'+g+
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Cours sur '+profondeurCourbe().duree+' de '+ech(x.n)+'">'+g+
     '<path d="'+d+'" fill="none" stroke="'+c+'" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'+
     '<circle cx="'+X(k.length-1).toFixed(1)+'" cy="'+Y(k[k.length-1]).toFixed(1)+'" r="3.4" fill="'+c+'"/></svg>';
 }
@@ -888,16 +931,20 @@ function phraseEtat(x){
   if(x.h!=null) p.push(x.h>=-1?'au plus haut de son annee':('en recul de '+nf1.format(Math.abs(x.h))+' % depuis son plus haut d\u2019un an'));
   if(x.p1!=null) p.push('dernier mois '+fmtPct(x.p1));
   if(x.p6!=null) p.push('six mois '+fmtPct(x.p6));
+  if(x.p60!=null) p.push('cinq ans '+fmtPct(x.p60));
   return p.join(', ')+'.';
 }
 
 function detailValeur(x){
   const act=radarActus(x.s);
   let h='<div class="vdet"><h4>'+ech(x.n)+'</h4>'+
-    '<div class="qd">'+ech(x.s)+' \u00b7 '+ech(x.o)+(x.t?' \u00b7 '+ech(x.t):'')+' \u00b7 '+x.j+' jours de cours'+(x.sri?' \u00b7 SRI '+ech(x.sri):'')+'</div>'+
+    '<div class="qd">'+ech(x.s)+' \u00b7 '+ech(x.o)+(x.t?' \u00b7 '+ech(x.t):'')+' \u00b7 '+x.j+' jours de cours'+
+      (x.ftd?' \u00b7 cote depuis le '+dfCourt.format(dISO(x.ftd)):'')+
+      (x.sri?' \u00b7 SRI '+ech(x.sri):'')+(x.et?' \u00b7 '+etoiles(x.et):'')+'</div>'+
     '<p class="vdet-etat">'+phraseEtat(x)+' Une part vaut '+nf2.format(x.c)+' '+ech(x.d)+'.</p>'+
     courbeSvg(x)+
-    '<p class="qd">Annee ecoulee, un point tous les dix jours de bourse.</p>';
+    '<p class="qd">'+(function(c){return c.duree.charAt(0).toUpperCase()+c.duree.slice(1)+', un point tous les '+c.pas+'.';})(profondeurCourbe())+
+     (x.h5!=null&&x.h!=null&&Math.abs(x.h5-x.h)>0.05?' Plus haut de cinq ans : '+fmtPct(x.h5)+'.':'')+'</p>';
   if(act.length){
     h+='<details class="radar-actus" open><summary>'+act.length+' titre'+(act.length>1?'s':'')+' de presse</summary><ul>';
     for(const a of act) h+='<li><a href="'+ech(a.u)+'" target="_blank" rel="noopener">'+ech(a.t)+'</a> <span class="src">'+ech(a.s||'')+'</span></li>';
@@ -906,6 +953,23 @@ function detailValeur(x){
     h+='<p style="margin:8px 0 0"><a class="radar-cherche" href="https://news.google.com/search?q='+encodeURIComponent(x.n)+'&hl=fr" target="_blank" rel="noopener">Chercher les actus de '+ech(x.n)+'</a></p>';
   }
   return h+'</div>';
+}
+
+/* Une cellule du tableau. Le nom porte le badge d'origine, le theme et
+   la mention "au plus haut" ; les autres colonnes sont des nombres. */
+function celluleRadar(x,c,pc){
+  if(c.k==='n'){
+    const auHaut=(x.h!=null&&x.h>=-1);
+    return '<td><span class="radar-nom" title="'+ech(x.n)+'">'+ech(x.n)+'</span><span class="radar-badge">'+ech(x.o)+'</span>'+
+      (auHaut?'<span class="radar-haut">au plus haut</span>':'')+
+      '<div class="qd mono">'+ech(x.s)+(x.t?' <span class="radar-theme">'+ech(x.t)+'</span>':'')+'</div></td>';
+  }
+  if(c.k==='c')   return '<td class="mono">'+nf2.format(x.c)+' '+ech(x.d)+'</td>';
+  if(c.k==='sec') return '<td class="mono">'+nf1.format(x.sec)+' %</td>';
+  if(c.k==='ftd') return '<td class="mono">'+(x.ftd?ech(x.ftd.slice(0,4)):'\u00b7')+'</td>';
+  if(c.k==='sri') return '<td class="mono">'+(x.sri?ech(x.sri):'\u00b7')+'</td>';
+  if(c.k==='et')  return '<td class="mono">'+(x.et?etoiles(x.et):'\u00b7')+'</td>';
+  return pc(x[c.k]);
 }
 
 function rendreRadarFamilles(){
@@ -972,22 +1036,18 @@ function rendreRadarTable(){
   const vues=lignes.slice(0,rdr.limite);
   const pc=v=>v==null?'<td class="val na">\u00b7</td>':'<td class="val '+classePct(v)+'">'+fmtPct(v)+'</td>';
   let h='<table><thead><tr>';
-  for(const c of COLS){
+  for(const c of cols()){
     const trie=(c.k===rdr.tri);
     h+='<th data-k="'+c.k+'" class="'+(trie?'trie':'')+'">'+c.t+(trie?'<span class="fleche">'+(rdr.sens<0?'\u25bc':'\u25b2')+'</span>':'')+'</th>';
   }
   h+='</tr></thead><tbody>';
+  const lst=cols();
   for(const x of vues){
     const ouv=(x.s===rdr.ouverte);
-    const auHaut=(x.h!=null&&x.h>=-1);
-    h+='<tr class="ligne'+(ouv?' ouverte':'')+'" data-s="'+ech(x.s)+'">'+
-      '<td><span class="radar-nom" title="'+ech(x.n)+'">'+ech(x.n)+'</span><span class="radar-badge">'+ech(x.o)+'</span>'+
-      (auHaut?'<span class="radar-haut">au plus haut</span>':'')+
-      '<div class="qd mono">'+ech(x.s)+(x.t?' <span class="radar-theme">'+ech(x.t)+'</span>':'')+'</div></td>'+
-      '<td class="mono">'+nf2.format(x.c)+' '+ech(x.d)+'</td>'+
-      pc(x.h)+pc(x.m)+pc(x.p1)+pc(x.p3)+pc(x.p6)+pc(x.p12)+
-      '<td class="mono">'+nf1.format(x.sec)+' %</td></tr>';
-    if(ouv) h+='<tr class="detail"><td colspan="'+COLS.length+'">'+detailValeur(x)+'</td></tr>';
+    h+='<tr class="ligne'+(ouv?' ouverte':'')+'" data-s="'+ech(x.s)+'">';
+    for(const c of lst) h+=celluleRadar(x,c,pc);
+    h+='</tr>';
+    if(ouv) h+='<tr class="detail"><td colspan="'+lst.length+'">'+detailValeur(x)+'</td></tr>';
   }
   h+='</tbody></table>';
   if(!total) h='<p class="radar-note">Aucune valeur de cette famille ne repond a ces criteres aujourd\u2019hui.</p>';
@@ -1021,9 +1081,9 @@ function rendreRadarThemes(){
   const ag=(etat.radar&&etat.radar.themes_agrege)||[];
   if(!ag.length){$('radarThemes').innerHTML='<p class="radar-note">Pas d\u2019agregat par theme dans ce balayage.</p>';return;}
   const pc=v=>v==null?'<td class="val na">\u00b7</td>':'<td class="val '+classePct(v)+'">'+fmtPct(v)+'</td>';
-  let h='<table><thead><tr><th>Theme</th><th>Valeurs</th><th>1M median</th><th>3M median</th><th>6M median</th><th>Plus forte sur 6 mois</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>Theme</th><th>Valeurs</th><th>1M median</th><th>3M median</th><th>6M median</th><th>5A median</th><th>Plus forte sur 6 mois</th></tr></thead><tbody>';
   for(const a of ag){
-    h+='<tr class="cliq" data-t="'+ech(a.t)+'"><td>'+ech(a.t)+'</td><td class="mono">'+a.n+'</td>'+pc(a.m1)+pc(a.m3)+pc(a.m6)+
+    h+='<tr class="cliq" data-t="'+ech(a.t)+'"><td>'+ech(a.t)+'</td><td class="mono">'+a.n+'</td>'+pc(a.m1)+pc(a.m3)+pc(a.m6)+pc(a.m60)+
        '<td>'+(a.top?('<span class="radar-nom" title="'+ech(a.top.n)+'">'+ech(a.top.n)+'</span> <span class="val '+classePct(a.top.p6)+'">'+fmtPct(a.top.p6)+'</span>'):'\u00b7')+'</td></tr>';
   }
   h+='</tbody></table>';
